@@ -4,6 +4,7 @@
 
 import { VideoCarousel } from "@/components/video-carousel";
 import { useEffect, useState, useRef } from "react";
+import { removeVideosFromCache } from "@/lib/videoCache";
 
 interface Video {
   _id: string;
@@ -61,6 +62,13 @@ export default function MyComponent() {
               // Remove what we can from the beginning (watched videos)
               if (safeRemoveCount > 0) {
                 const removedVideos = updatedVideos.splice(0, safeRemoveCount);
+
+                // Remove from cache
+                const removedIds = removedVideos.map((v) => v._id);
+                removeVideosFromCache(removedIds).catch((err) =>
+                  console.error("Failed to remove videos from cache:", err),
+                );
+
                 removedVideos.forEach((video) => {
                   existingIdsRef.current.delete(video._id);
                 });
@@ -73,6 +81,13 @@ export default function MyComponent() {
                 updatedVideos.length - remainingToRemove,
                 remainingToRemove,
               );
+
+              // Remove from cache
+              const removedEndIds = removeFromEnd.map((v) => v._id);
+              removeVideosFromCache(removedEndIds).catch((err) =>
+                console.error("Failed to remove videos from cache:", err),
+              );
+
               removeFromEnd.forEach((video) => {
                 existingIdsRef.current.delete(video._id);
               });
@@ -83,6 +98,13 @@ export default function MyComponent() {
             } else {
               // Safe to remove from beginning only
               const removedVideos = updatedVideos.splice(0, finalRemoveCount);
+
+              // Remove from cache
+              const removedIds = removedVideos.map((v) => v._id);
+              removeVideosFromCache(removedIds).catch((err) =>
+                console.error("Failed to remove videos from cache:", err),
+              );
+
               removedVideos.forEach((video) => {
                 existingIdsRef.current.delete(video._id);
               });

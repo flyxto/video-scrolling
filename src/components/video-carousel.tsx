@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { MusicIcon } from "lucide-react";
 import { IoIosShareAlt, IoMdHeart } from "react-icons/io";
 import { FaCommentDots } from "react-icons/fa";
+import { getVideoFromCache, saveVideoToCache } from "@/lib/videoCache";
 
 interface Video {
   _id: string;
@@ -66,7 +67,7 @@ export function VideoCarousel({
     }
   }, [currentIndex, videos, interactions]);
 
-  // Function to fetch video as blob
+  // Function to fetch video as blob (with caching)
   const fetchVideoAsBlob = async (videoUrl: string, videoId: string) => {
     if (blobUrls.has(videoId) || loadingVideos.has(videoId)) {
       return;
@@ -75,8 +76,24 @@ export function VideoCarousel({
     setLoadingVideos((prev) => new Set(prev).add(videoId));
 
     try {
-      const response = await fetch(videoUrl);
-      const blob = await response.blob();
+      // Check cache first
+      const cachedBlob = await getVideoFromCache(videoId);
+
+      let blob: Blob;
+
+      if (cachedBlob) {
+        // Use cached blob
+        blob = cachedBlob;
+      } else {
+        // Download and cache
+        console.log(`⬇️ Downloading video: ${videoId}`);
+        const response = await fetch(videoUrl);
+        blob = await response.blob();
+
+        // Save to cache
+        await saveVideoToCache(videoId, blob);
+      }
+
       const blobUrl = URL.createObjectURL(blob);
 
       setBlobUrls((prev) => new Map(prev).set(videoId, blobUrl));
