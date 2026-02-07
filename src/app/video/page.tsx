@@ -192,8 +192,52 @@ export default function MyComponent() {
     setCurrentIndex(newIndex);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) {
+    return (
+      <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#442E8D] via-[#702A8C] to-[#442E8D]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+          <p className="text-white text-lg font-medium">Loading videos...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#442E8D] via-[#702A8C] to-[#442E8D]">
+        <div className="max-w-md mx-auto px-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </div>
+            <h2 className="text-white text-xl font-semibold mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-white/70 mb-6">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#442E8D] via-[#702A8C] to-[#442E8D] overflow-hidden ">
