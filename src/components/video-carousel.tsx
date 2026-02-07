@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { MusicIcon } from "lucide-react";
 import { IoIosShareAlt, IoMdHeart } from "react-icons/io";
 import { FaCommentDots } from "react-icons/fa";
-import { getVideoFromCache, saveVideoToCache } from "@/lib/videoCache";
 
 interface Video {
   _id: string;
@@ -19,16 +18,10 @@ interface Video {
 
 interface VideoCarouselProps {
   videos: Video[];
-  onIndexChange?: (index: number) => void;
-  externalIndex?: number;
 }
 
-export function VideoCarousel({
-  videos,
-  onIndexChange,
-  externalIndex,
-}: VideoCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(externalIndex || 0);
+export function VideoCarousel({ videos }: VideoCarouselProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [blobUrls, setBlobUrls] = useState<Map<string, string>>(new Map());
   const [loadingVideos, setLoadingVideos] = useState<Set<string>>(new Set());
@@ -37,14 +30,6 @@ export function VideoCarousel({
   const [interactions, setInteractions] = useState<
     Map<string, { likes: number; comments: number }>
   >(new Map());
-
-  // Sync with external index changes
-  useEffect(() => {
-    if (externalIndex !== undefined && externalIndex !== currentIndex) {
-      console.log(`External index change: ${currentIndex} -> ${externalIndex}`);
-      setCurrentIndex(externalIndex);
-    }
-  }, [externalIndex]);
 
   const getRandomInteractions = (videoId: string) => {
     if (!interactions.has(videoId)) {
@@ -67,7 +52,7 @@ export function VideoCarousel({
     }
   }, [currentIndex, videos, interactions]);
 
-  // Function to fetch video as blob (with caching)
+  // Function to fetch video as blob
   const fetchVideoAsBlob = async (videoUrl: string, videoId: string) => {
     if (blobUrls.has(videoId) || loadingVideos.has(videoId)) {
       return;
@@ -76,24 +61,8 @@ export function VideoCarousel({
     setLoadingVideos((prev) => new Set(prev).add(videoId));
 
     try {
-      // Check cache first
-      const cachedBlob = await getVideoFromCache(videoId);
-
-      let blob: Blob;
-
-      if (cachedBlob) {
-        // Use cached blob
-        blob = cachedBlob;
-      } else {
-        // Download and cache
-        console.log(`⬇️ Downloading video: ${videoId}`);
-        const response = await fetch(videoUrl);
-        blob = await response.blob();
-
-        // Save to cache
-        await saveVideoToCache(videoId, blob);
-      }
-
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
       setBlobUrls((prev) => new Map(prev).set(videoId, blobUrl));
@@ -148,30 +117,7 @@ export function VideoCarousel({
     prevVideosLengthRef.current = videos.length;
   }, [videos.length]);
 
-  // Cleanup blob URLs when videos are removed
-  useEffect(() => {
-    // Find blob URLs that no longer have corresponding videos
-    const currentVideoIds = new Set(videos.map((v) => v._id));
-    const blobsToRemove: string[] = [];
-
-    blobUrls.forEach((blobUrl, videoId) => {
-      if (!currentVideoIds.has(videoId)) {
-        blobsToRemove.push(videoId);
-        URL.revokeObjectURL(blobUrl);
-      }
-    });
-
-    if (blobsToRemove.length > 0) {
-      setBlobUrls((prev) => {
-        const newMap = new Map(prev);
-        blobsToRemove.forEach((id) => newMap.delete(id));
-        return newMap;
-      });
-      console.log(`Cleaned up ${blobsToRemove.length} blob URLs`);
-    }
-  }, [videos]);
-
-  // Cleanup all blob URLs on unmount
+  // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
       blobUrls.forEach((blobUrl) => {
@@ -183,13 +129,7 @@ export function VideoCarousel({
   // Handle video end
   const handleVideoEnd = () => {
     setDirection(1);
-    const newIndex = (currentIndex + 1) % videos.length;
-    setCurrentIndex(newIndex);
-
-    // Notify parent component
-    if (onIndexChange) {
-      onIndexChange(newIndex);
-    }
+    setCurrentIndex((prev) => (prev + 1) % videos.length);
   };
 
   // Auto-play current video when blob is ready
@@ -199,25 +139,10 @@ export function VideoCarousel({
 
     if (currentVideo && blobUrls.has(currentVideoId)) {
       currentVideo.play().catch((error) => {
-        console.log("Video autoplay failed:", error);
+        console.log("[v0] Video autoplay failed:", error);
       });
     }
   }, [currentIndex, blobUrls, videos]);
-
-  // Reset to valid index if current index is out of bounds
-  useEffect(() => {
-    if (videos.length > 0 && currentIndex >= videos.length) {
-      const newIndex = Math.min(currentIndex, videos.length - 1);
-      console.log(
-        `Index out of bounds, resetting: ${currentIndex} -> ${newIndex}`,
-      );
-      setCurrentIndex(newIndex);
-
-      if (onIndexChange) {
-        onIndexChange(newIndex);
-      }
-    }
-  }, [videos.length, currentIndex]);
 
   const variants = {
     enter: {
@@ -303,11 +228,6 @@ export function VideoCarousel({
           />
         );
       })}
-
-      {/* Debug info - remove in production */}
-      {/* <div className="absolute top-4 left-4 bg-black/50 text-white text-xs p-2 rounded">
-        Video {currentIndex + 1} / {videos.length}
-      </div> */}
     </div>
   );
 }
